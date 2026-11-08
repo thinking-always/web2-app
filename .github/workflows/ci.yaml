@@ -35,11 +35,12 @@ jobs:
           token: ${{ secrets.MANIFEST_PAT }}
           path: manifests
 
-      - name: 이미지 태그 수정 후 push
+      - name: dev 이미지 태그 수정 후 push
         run: |
-          cd manifests
-          sed -i "s|image: .*|image: ghcr.io/${{ github.repository }}:${{ github.sha }}|" k8s/deployment.yaml
+          cd manifests/overlays/dev
+          kustomize edit set image ghcr.io/${{ github.repository }}=ghcr.io/${{ github.repository }}:${{ github.sha }}
+          cd ../..
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git commit -am "update image to ${{ github.sha }}"
+          git commit -am "dev: update image to ${{ github.sha }}"
           git push
