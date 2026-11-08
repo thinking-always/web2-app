@@ -1,0 +1,45 @@
+name: ci
+on:
+  push:
+    branches: [main]
+    paths:
+      - index.html
+      - Dockerfile
+      - .github/workflows/ci.yaml
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+
+      - name: 매니페스트 레포 가져오기
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/web2-manifests
+          token: ${{ secrets.MANIFEST_PAT }}
+          path: manifests
+
+      - name: 이미지 태그 수정 후 push
+        run: |
+          cd manifests
+          sed -i "s|image: .*|image: ghcr.io/${{ github.repository }}:${{ github.sha }}|" k8s/deployment.yaml
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git commit -am "update image to ${{ github.sha }}"
+          git push
